@@ -1,0 +1,279 @@
+version: '3.8'
+
+services:
+  # ═══════════════════════════════════════════════
+  # DATABASES
+  # ═══════════════════════════════════════════════
+  postgres:
+    image: postgres:16-alpine
+    container_name: social-postgres
+    environment:
+      POSTGRES_DB: social_platform
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - social-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: social-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - social-network
+
+  mongodb:
+    image: mongo:7
+    container_name: social-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - social-network
+
+  # ═══════════════════════════════════════════════
+  # MICROSERVICES
+  # ═══════════════════════════════════════════════
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    container_name: social-user-service
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/social_platform?schema=public
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_REFRESH_SECRET=your-refresh-secret-key-change-in-production
+      - JWT_EXPIRES_IN=1h
+      - JWT_REFRESH_EXPIRES_IN=7d
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/user-service:/app
+      - /app/node_modules
+    networks:
+      - social-network
+
+  post-service:
+    build:
+      context: ./services/post-service
+      dockerfile: Dockerfile
+    container_name: social-post-service
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongodb:27017/social_posts
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/post-service:/app
+      - /app/node_modules
+    networks:
+      - social-network
+
+  feed-service:
+    build:
+      context: ./services/feed-service
+      dockerfile: Dockerfile
+    container_name: social-feed-service
+    ports:
+      - "3003:3003"
+    environment:
+      - PORT=3003
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongodb:27017/social_posts
+      - REDIS_URL=redis://redis:6379
+      - USER_SERVICE_URL=http://user-service:3001
+      - POST_SERVICE_URL=http://post-service:3002
+    depends_on:
+      - mongodb
+      - redis
+      - user-service
+      - post-service
+    volumes:
+      - ./services/feed-service:/app
+      - /app/node_modules
+    networks:
+      - social-network
+
+  chat-service:
+    build:
+      context: ./services/chat-service
+      dockerfile: Dockerfile
+    container_name: social-chat-service
+    ports:
+      - "3004:3004"
+    environment:
+      - PORT=3004
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongodb:27017/social_chat
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - FRONTEND_URL=http://localhost:3000
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/chat-service:/app
+      - /app/node_modules
+    networks:
+      - social-network
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: social-notification-service
+    ports:
+      - "3005:3005"
+    environment:
+      - PORT=3005
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongodb:27017/social_notifications
+      - REDIS_URL=redis://redis:6379
+      - CHAT_SERVICE_URL=http://chat-service:3004
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/notification-service:/app
+      - /app/node_modules
+    networks:
+      - social-network
+
+  media-service:
+    build:
+      context: ./services/media-service
+      dockerfile: Dockerfile
+    container_name: social-media-service
+    ports:
+      - "3006:3006"
+    environment:
+      - PORT=3006
+      - NODE_ENV=development
+      - USE_LOCAL_STORAGE=true
+      - LOCAL_STORAGE_PATH=./uploads
+    volumes:
+      - ./services/media-service:/app
+      - /app/node_modules
+      - media_uploads:/app/uploads
+    networks:
+      - social-network
+
+  # ═══════════════════════════════════════════════
+  # API GATEWAY
+  # ═══════════════════════════════════════════════
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: social-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - NODE_ENV=development
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_REFRESH_SECRET=your-refresh-secret-key-change-in-production
+      - USER_SERVICE_URL=http://user-service:3001
+      - POST_SERVICE_URL=http://post-service:3002
+      - FEED_SERVICE_URL=http://feed-service:3003
+      - CHAT_SERVICE_URL=http://chat-service:3004
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3005
+      - MEDIA_SERVICE_URL=http://media-service:3006
+      - FRONTEND_URL=http://localhost:3000
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX_REQUESTS=100
+    depends_on:
+      - user-service
+      - post-service
+      - feed-service
+      - chat-service
+      - notification-service
+      - media-service
+    volumes:
+      - ./api-gateway:/app
+      - /app/node_modules
+    networks:
+      - social-network
+
+  # ═══════════════════════════════════════════════
+  # FRONTEND
+  # ═══════════════════════════════════════════════
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: social-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080/api
+      - NEXT_PUBLIC_SOCKET_URL=http://localhost:3004
+    depends_on:
+      - api-gateway
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - social-network
+
+# ═══════════════════════════════════════════════
+# VOLUMES
+# ═══════════════════════════════════════════════
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  mongo_data:
+    driver: local
+  media_uploads:
+    driver: local
+
+# ═══════════════════════════════════════════════
+# NETWORKS
+# ═══════════════════════════════════════════════
+networks:
+  social-network:
+    driver: bridge
