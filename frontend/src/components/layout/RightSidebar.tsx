@@ -41,7 +41,6 @@ export function RightSidebar() {
                   <div>
                     <div className="flex items-center gap-1">
                       <p className="font-medium text-sm">{user.name}</p>
-                      {user.isVerified && <Verified className="h-3 w-3 text-blue-500" />}
                     </div>
                     <p className="text-xs text-muted-foreground">@{user.username}</p>
                   </div>

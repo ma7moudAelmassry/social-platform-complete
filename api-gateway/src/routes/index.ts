@@ -12,17 +12,23 @@ const createServiceProxy = (target: string, pathRewrite?: { [key: string]: strin
     target,
     changeOrigin: true,
     pathRewrite,
-    onError: (err, req, res) => {
-      console.error(`Proxy error for ${target}:`, err.message);
-      res.status(503).json({ success: false, message: 'Service unavailable' });
-    },
-    onProxyReq: (proxyReq, req: any) => {
-      // Forward user info from JWT if available
-      if (req.user) {
-        proxyReq.setHeader('x-user-id', req.user.id);
-        proxyReq.setHeader('x-user-username', req.user.username);
-        proxyReq.setHeader('x-user-email', req.user.email);
-      }
+    on: {
+      error: (err, req, res) => {
+        console.error(`Proxy error for ${target}:`, err.message);
+        const response = res as import('http').ServerResponse;
+        if (!response.headersSent) {
+          response.writeHead(503, { 'Content-Type': 'application/json' });
+        }
+        response.end(JSON.stringify({ success: false, message: 'Service unavailable' }));
+      },
+      proxyReq: (proxyReq, req: any) => {
+        // Forward user info from JWT if available
+        if (req.user) {
+          proxyReq.setHeader('x-user-id', req.user.id);
+          proxyReq.setHeader('x-user-username', req.user.username);
+          proxyReq.setHeader('x-user-email', req.user.email);
+        }
+      },
     },
   });
 };

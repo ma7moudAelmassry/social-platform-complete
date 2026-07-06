@@ -1,4 +1,3 @@
-import { Inter } from 'next/font/google';
 import '@/styles/globals.css';
 import { AuthProvider } from '@/components/layout/AuthProvider';
 import { SocketProvider } from '@/components/layout/SocketProvider';
@@ -6,8 +5,6 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { RightSidebar } from '@/components/layout/RightSidebar';
 import { Toaster } from '@/components/ui/toaster';
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
   title: 'Social Platform',
@@ -21,7 +18,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className="font-sans">
         <AuthProvider>
           <SocketProvider>
             <div className="min-h-screen bg-background">

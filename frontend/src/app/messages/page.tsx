@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { useChatStore } from '@/stores/chatStore';
@@ -12,10 +12,18 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/utils';
-import { Search, Send, Image, Smile, MoreVertical, Phone, Video } from 'lucide-react';
+import { Search, Send, Image, Smile, MoreVertical, Phone, Video, MessageCircle } from 'lucide-react';
 import { socketClient } from '@/lib/socket';
 
 export default function MessagesPage() {
+  return (
+    <Suspense fallback={null}>
+      <MessagesContent />
+    </Suspense>
+  );
+}
+
+function MessagesContent() {
   const { user } = useAuthStore();
   const searchParams = useSearchParams();
   const {

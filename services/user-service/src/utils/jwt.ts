@@ -11,12 +11,12 @@ export interface TokenPayload {
 export const generateTokens = async (payload: TokenPayload) => {
   const accessToken = jwt.sign(payload, config.jwtSecret, {
     expiresIn: config.jwtExpiresIn,
-  });
+  } as jwt.SignOptions);
 
   const refreshToken = jwt.sign(
     { id: payload.id, type: 'refresh' },
     config.jwtRefreshSecret,
-    { expiresIn: config.jwtRefreshExpiresIn }
+    { expiresIn: config.jwtRefreshExpiresIn } as jwt.SignOptions
   );
 
   // Store refresh token in database

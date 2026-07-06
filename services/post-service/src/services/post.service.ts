@@ -55,7 +55,14 @@ export class PostService {
     return result;
   }
 
-  async getUserPosts(userId: string, page: number = 1, limit: number = 10) {
+  async getUserPosts(
+    userId: string,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<{
+    data: Array<Record<string, any> & { id: string }>;
+    pagination: { page: number; limit: number; total: number; hasMore: boolean };
+  }> {
     const skip = (page - 1) * limit;
 
     const [posts, total] = await Promise.all([
@@ -139,7 +146,14 @@ export class PostService {
     return !!save;
   }
 
-  async getComments(postId: string, page: number = 1, limit: number = 20) {
+  async getComments(
+    postId: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<{
+    data: Array<Record<string, any> & { id: string }>;
+    pagination: { page: number; limit: number; total: number; hasMore: boolean };
+  }> {
     const skip = (page - 1) * limit;
 
     const [comments, total] = await Promise.all([
@@ -191,7 +205,14 @@ export class PostService {
     return { success: true };
   }
 
-  async searchPosts(query: string, page: number = 1, limit: number = 20) {
+  async searchPosts(
+    query: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<{
+    data: Array<Record<string, any> & { id: string }>;
+    pagination: { page: number; limit: number; total: number; hasMore: boolean };
+  }> {
     const skip = (page - 1) * limit;
 
     const [posts, total] = await Promise.all([

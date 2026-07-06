@@ -49,7 +49,14 @@ export class ChatService {
     return roomsWithUnread;
   }
 
-  async getMessages(roomId: string, page: number = 1, limit: number = 50) {
+  async getMessages(
+    roomId: string,
+    page: number = 1,
+    limit: number = 50
+  ): Promise<{
+    data: Array<Record<string, any> & { id: string }>;
+    pagination: { page: number; limit: number; total: number; hasMore: boolean };
+  }> {
     const skip = (page - 1) * limit;
 
     const [messages, total] = await Promise.all([

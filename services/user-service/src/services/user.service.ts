@@ -200,7 +200,7 @@ export class UserService {
     ]);
 
     return {
-      data: followers.map((f) => f.follower),
+      data: followers.map((f: any) => f.follower),
       pagination: {
         page,
         limit,
@@ -235,7 +235,7 @@ export class UserService {
     ]);
 
     return {
-      data: following.map((f) => f.following),
+      data: following.map((f: any) => f.following),
       pagination: {
         page,
         limit,
